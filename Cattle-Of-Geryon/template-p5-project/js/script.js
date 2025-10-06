@@ -1,251 +1,156 @@
-/**
- * Cattle of Geryon game (to be changed later)
- * Catherine Zaloshnja
- */
-
-"use strict";
-
-
-let flock;
+let boids = [];
+let walls = [];
 
 function setup() {
   createCanvas(1920, 1080);
+  noCursor(); //no mouse cursor visible
 
-  flock = new Flock();
+  //all the labyrinth walls (to be changed)
+  walls.push(new Wall(100, 100, 1700, 20)); //top wall
+  walls.push(new Wall(100, 980, 1700, 20)); //bottom wall
+  walls.push(new Wall(100, 100, 20, 880));  //left wall
+  walls.push(new Wall(1780, 100, 20, 880)); //right wall
+  walls.push(new Wall(400, 400, 20, 600));  //vertical interior wall
+  walls.push(new Wall(800, 300, 20, 600));  //vertical interior wall
+  walls.push(new Wall(1200, 400, 20, 600));  //vertical interior wall
+  walls.push(new Wall(1500, 300, 20, 600));  //vertical interior wall
+  walls.push(new Wall(200, 300, 1600, 20)); //horizontal interior wall
 
-  // Add an initial set of boids into the system
-  for (let i = 0; i < 50; i++) {
-    let b = new Boid(width / 2, height / 2);
-    flock.addBoid(b);
+  for (let i = 0; i < 50; i++) { //50 boids
+    boids.push(new Boid(1650, 500)); //boid spawn point
   }
 }
 
 function draw() {
   background(0);
-  flock.run();
+
+  //draw the maze walls
+  for (let wall of walls) {
+    wall.show();
+  }
+
+  for (let boid of boids) {
+    boid.flockWithMouse();
+    boid.vibrate();
+    boid.update();
+    boid.bounceOffWalls(walls);
+    boid.edges();
+    boid.show();
+  }
 }
 
-// On mouse drag, add a new boid to the flock
-// function mouseDragged() {
-//   flock.addBoid(new Boid(mouseX, mouseY));
-// }
-
-// Flock class to manage the array of all the boids
-class Flock {
-  constructor() {
-    // Initialize the array of boids
-    this.boids = [];
+class Wall {
+  //setting up wall parameters
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
   }
 
-  run() {
-    for (let boid of this.boids) {
-      // Pass the entire list of boids to each boid individually
-      boid.run(this.boids);
-    }
-  }
-
-  addBoid(b) {
-    this.boids.push(b);
+  //walls look
+  show() {
+    fill(100);
+    noStroke();
+    rect(this.x, this.y, this.w, this.h);
   }
 }
 
 class Boid {
   constructor(x, y) {
-    this.acceleration = createVector(0, 0);
-    this.velocity = createVector(random(-1, 1), random(-1, 1));
     this.position = createVector(x, y);
-    this.size = 12;
-
-    // Maximum speed
-    this.maxSpeed = 3;
-
-    // Maximum steering force
-    this.maxForce = 0.05;
-    colorMode(HSB);
-    this.color = color(255);
+    this.velocity = p5.Vector.random2D();
+    this.velocity.setMag(random(2, 4));
+    this.acceleration = createVector();
+    this.maxForce = 0.3; //how much they swerve
+    this.maxSpeed = 3; //how fast they move
   }
 
-  run(boids) {
-    this.flock(boids);
-    this.update();
-    this.borders();
-    this.render();
+  flockWithMouse() {
+    ellipse(mouseX,mouseY,10,10); //makes the mouse an ellipse
+    let mouse = createVector(mouseX, mouseY);
+    let distance = p5.Vector.dist(mouse, this.position); //distance between mouse and boid
+    let mouseInfluenceRadius = 100;
+
+    //if the distance btwn the mouse and boid is smaller than the influence radius, the boid will follow the mouse
+    if (distance < mouseInfluenceRadius) {
+      let steer = p5.Vector.sub(mouse, this.position);
+      steer.setMag(this.maxSpeed);
+      steer.sub(this.velocity);
+      steer.limit(this.maxForce);
+      this.applyForce(steer);
+    }
+  }
+
+  //makes the boids jitter a bit so they have some individual movement
+  vibrate() {
+    let vibrationStrength = 0.5;
+    let jitter = p5.Vector.random2D().mult(vibrationStrength);
+    this.applyForce(jitter);
   }
 
   applyForce(force) {
-    // We could add mass here if we want: A = F / M
     this.acceleration.add(force);
   }
 
-  // We accumulate a new acceleration each time based on three rules
-  flock(boids) {
-    let separation = this.separate(boids);
-    let alignment = this.align(boids);
-    let cohesion = this.cohesion(boids);
-
-    // Arbitrarily weight these forces
-    separation.mult(1.5);
-    alignment.mult(1.0);
-    cohesion.mult(1.0);
-
-    // Add the force vectors to acceleration
-    this.applyForce(separation);
-    this.applyForce(alignment);
-    this.applyForce(cohesion);
-  }
-
-  // Method to update location
   update() {
-    // Update velocity
     this.velocity.add(this.acceleration);
-
-    // Limit speed
     this.velocity.limit(this.maxSpeed);
     this.position.add(this.velocity);
-
-    // Reset acceleration to 0 each cycle
     this.acceleration.mult(0);
   }
 
-  // A method that calculates and applies a steering force towards a target
-  // STEER = DESIRED MINUS VELOCITY
-  seek(target) {
-    // A vector pointing from the location to the target
-    let desired = p5.Vector.sub(target, this.position);
+  bounceOffWalls(walls) {
+  for (let wall of walls) {
+    let x = wall.x;
+    let y = wall.y;
+    let w = wall.w;
+    let h = wall.h;
 
-    // Normalize desired and scale to maximum speed
-    desired.normalize();
-    desired.mult(this.maxSpeed);
+    // Simple AABB (axis-aligned bounding box) collision detection (??)
+    if (
+      this.position.x > x &&
+      this.position.x < x + w &&
+      this.position.y > y &&
+      this.position.y < y + h
+    ) {
+      // Determine which side the boid hit by checking distances
+      let left = abs(this.position.x - x);
+      let right = abs(this.position.x - (x + w));
+      let top = abs(this.position.y - y);
+      let bottom = abs(this.position.y - (y + h));
 
-    // Steering = Desired minus Velocity
-    let steer = p5.Vector.sub(desired, this.velocity);
+      let minDist = min(left, right, top, bottom);
 
-    // Limit to maximum steering force
-    steer.limit(this.maxForce);
-    return steer;
-  }
-
-  render() {
-    // Draw a triangle rotated in the direction of velocity
-    let theta = this.velocity.heading() + radians(90);
-    fill(this.color);
-    // stroke(255);
-    push();
-    translate(this.position.x, this.position.y);
-    rotate(theta);
-    beginShape();
-    circle(0, 0, this.size)
-    // vertex(0, -this.size * 2);
-    // vertex(-this.size, this.size * 2);
-    // vertex(this.size, this.size * 2);
-    endShape(CLOSE);
-    pop();
-  }
-
-  // Wraparound
-  borders() {
-    if (this.position.x < -this.size) {
-      this.position.x = width + this.size;
-    }
-
-    if (this.position.y < -this.size) {
-      this.position.y = height + this.size;
-    }
-
-    if (this.position.x > width + this.size) {
-      this.position.x = -this.size;
-    }
-
-    if (this.position.y > height + this.size) {
-      this.position.y = -this.size;
-    }
-  }
-
-  // Separation
-  // Method checks for nearby boids and steers away
-  separate(boids) {
-    let desiredSeparation = 25.0;
-    let steer = createVector(0, 0);
-    let count = 0;
-
-    // For every boid in the system, check if it's too close
-    for (let boid of boids) {
-      let distanceToNeighbor = p5.Vector.dist(this.position, boid.position);
-
-      // If the distance is greater than 0 and less than an arbitrary amount (0 when you are yourself)
-      if (distanceToNeighbor > 0 && distanceToNeighbor < desiredSeparation) {
-        // Calculate vector pointing away from neighbor
-        let diff = p5.Vector.sub(this.position, boid.position);
-        diff.normalize();
-
-        // Scale by distance
-        diff.div(distanceToNeighbor);
-        steer.add(diff);
-
-        // Keep track of how many
-        count++;
+      if (minDist === left || minDist === right) {
+        this.velocity.x *= -1;
+        if (minDist === left) this.position.x = x - 1;
+        else this.position.x = x + w + 1;
+      } else {
+        this.velocity.y *= -1;
+        if (minDist === top) this.position.y = y - 1;
+        else this.position.y = y + h + 1;
       }
     }
-
-    // Average -- divide by how many
-    if (count > 0) {
-      steer.div(count);
-    }
-
-    // As long as the vector is greater than 0
-    if (steer.mag() > 0) {
-      // Implement Reynolds: Steering = Desired - Velocity
-      steer.normalize();
-      steer.mult(this.maxSpeed);
-      steer.sub(this.velocity);
-      steer.limit(this.maxForce);
-    }
-    return steer;
   }
+}
 
-  // Alignment
-  // For every nearby boid in the system, calculate the average velocity
-  align(boids) {
-    let neighborDistance = 50;
-    let sum = createVector(0, 0);
-    let count = 0;
-    for (let i = 0; i < boids.length; i++) {
-      let d = p5.Vector.dist(this.position, boids[i].position);
-      if (d > 0 && d < neighborDistance) {
-        sum.add(boids[i].velocity);
-        count++;
-      }
-    }
-    if (count > 0) {
-      sum.div(count);
-      sum.normalize();
-      sum.mult(this.maxSpeed);
-      let steer = p5.Vector.sub(sum, this.velocity);
-      steer.limit(this.maxForce);
-      return steer;
-    } else {
-      return createVector(0, 0);
-    }
+//makes the boids stop at the edges of the canvas
+edges() {
+  if (this.position.x < 0 || this.position.x > width) {
+    this.velocity.x *= -1;
+    this.position.x = constrain(this.position.x, 0, width);
   }
+  if (this.position.y < 0 || this.position.y > height) {
+    this.velocity.y *= -1;
+    this.position.y = constrain(this.position.y, 0, height);
+  }
+}
 
-  // Cohesion
-  // For the average location (i.e., center) of all nearby boids, calculate steering vector towards that location
-  cohesion(boids) {
-    let neighborDistance = 50;
-    let sum = createVector(0, 0); // Start with empty vector to accumulate all locations
-    let count = 0;
-    for (let i = 0; i < boids.length; i++) {
-      let d = p5.Vector.dist(this.position, boids[i].position);
-      if (d > 0 && d < neighborDistance) {
-        sum.add(boids[i].position); // Add location
-        count++;
-      }
-    }
-    if (count > 0) {
-      sum.div(count);
-      return this.seek(sum); // Steer towards the location
-    } else {
-      return createVector(0, 0);
-    }
+//the look of the boid
+  show() {
+    stroke(255);
+    strokeWeight(10);
+    point(this.position.x, this.position.y);
   }
-} // class Boid
+}
