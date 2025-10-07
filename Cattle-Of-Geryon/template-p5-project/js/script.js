@@ -37,7 +37,9 @@ function draw() {
     boid.edges();
     boid.show();
   }
+  
 }
+
 
 class Wall {
   //setting up wall parameters
@@ -54,6 +56,7 @@ class Wall {
     noStroke();
     rect(this.x, this.y, this.w, this.h);
   }
+
 }
 
 class Boid {
