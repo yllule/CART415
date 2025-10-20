@@ -4,11 +4,18 @@ let adPopups = []; //stores PopupImgs objects
 let nextAdTime = 0;
 let overlayBuffer;
 
+let holdStartTime = null;
+let holdDuration = 2000; //2 secs
+
+let gameState = "start"; // "start", "game", "end"
+
 //img variables
 let mazeImg;
 let cattleImg;
 let popupImgs = [];
 let flagImg;
+let flagX = 1375;
+let flagY = 335;
 
 function preload() {
   
@@ -33,9 +40,43 @@ function setup() {
 }
 
 function draw() {
+
+  if (gameState === "start") {
+    drawHomeScreen();
+    return;
+  }
+
+  if (gameState === "end") {
+    drawEndScreen();
+    return;
+  }
+
   background(0);
   image(mazeImg, 0, 0);
-  image(flagImg, 1375, 335);
+  image(flagImg, flagX, flagY);
+
+  //check if cursor is inside the flag area
+  let insideFlag = (
+    mouseX >= flagX &&
+    mouseX <= flagX + flagImg.width &&
+    mouseY >= flagY &&
+    mouseY <= flagY + flagImg.height
+  );
+
+  if (insideFlag && mouseIsPressed) {
+    if (holdStartTime === null) {
+      holdStartTime = millis(); //start timing
+    } else {
+      let heldTime = millis() - holdStartTime;
+      if (heldTime > holdDuration) {
+        gameState = "end";
+      }
+    }
+  } else {
+    holdStartTime = null; //reset if released or moved away
+  }
+
+
   // overlayBuffer = createGraphics(width, height);
 
   for (let boid of boids) {
@@ -80,6 +121,63 @@ if (millis() > nextAdTime) {
 
 }
 
+function drawHomeScreen() {
+  push();
+  background(20);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(64);
+  text("Herculean Cere-bull Labors", width / 2, height / 2 - 300);
+  pop();
+
+  push();
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(48);
+  text("Guide the cattle braincell towards the end goal without getting distracted!", width / 2, height / 2);
+  text("Once at the goal, press the mouse for 2 secs to finish the game.", width / 2, height / 2 + 100);
+  pop();
+
+  // Draw start button
+  push();
+  fill(255);
+  rectMode(CENTER);
+  rect(width / 2, height / 2 + 200, 200, 60, 10); // rounded corners
+  pop();
+
+  push();
+  fill(0);
+  textSize(32);
+  textAlign(CENTER, CENTER);
+  text("Start", width / 2, height / 2 + 200);
+  pop();
+
+  push();
+  noStroke()
+  ellipse(mouseX,mouseY, 15, 15); //makes the mouse an ellipse
+  pop();
+}
+
+function startGame() {
+  gameState = "game";
+  nextAdTime = millis() + random(5000, 10000); // start ad timing
+}
+
+function drawEndScreen() {
+  push();
+  background(0);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(64);
+  text("You completed your Herculean task!", width / 2, height / 2);
+  pop();
+
+  push();
+  noStroke()
+  ellipse(mouseX,mouseY, 15, 15); //makes the mouse an ellipse
+  pop();
+}
+
 function spawnAdPopup() {
   let randomImg = random(popupImgs); // Pick image from adImages
   let ad = new PopupImgs(randomImg); // Create popup instance
@@ -95,10 +193,31 @@ function isWall(x, y) {
 }
 
 function mousePressed() {
-  for (let i = adPopups.length - 1; i >= 0; i--) {
-    if (adPopups[i].isClicked(mouseX, mouseY)) {
-      adPopups.splice(i, 1); // Remove ad on click
-      break;
+  if (gameState === "start") {
+    // Check if mouse is inside the start button
+    let btnX = width / 2;
+    let btnY = height / 2 + 200;
+    let btnW = 200;
+    let btnH = 60;
+
+    if (
+      mouseX >= btnX - btnW / 2 &&
+      mouseX <= btnX + btnW / 2 &&
+      mouseY >= btnY - btnH / 2 &&
+      mouseY <= btnY + btnH / 2
+    ) {
+      startGame();
+    }
+
+    return; // don't run other mousePressed logic
+  }
+
+  if (gameState === "game") {
+    for (let i = adPopups.length - 1; i >= 0; i--) {
+      if (adPopups[i].isClicked(mouseX, mouseY)) {
+        adPopups.splice(i, 1); // remove ad
+        break;
+      }
     }
   }
 }
@@ -215,7 +334,7 @@ class PopupImgs {
     rect(this.x + this.img.width - this.closeSize, this.y, this.closeSize, this.closeSize);
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(20);
+    textSize(30);
     text('X', this.x + this.img.width - this.closeSize / 2, this.y + this.closeSize / 2);
     pop();
   }
