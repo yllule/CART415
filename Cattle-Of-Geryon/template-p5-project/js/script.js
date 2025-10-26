@@ -76,7 +76,6 @@ function draw() {
     holdStartTime = null; //reset if released or moved away
   }
 
-
   // overlayBuffer = createGraphics(width, height);
 
   for (let boid of boids) {
@@ -87,15 +86,21 @@ function draw() {
     boid.show();
   }
 
-for (let i = 0; i < adPopups.length; i++) {
-  adPopups[i].show();
-}
+      for (let i = 0; i < adPopups.length; i++) {
+    adPopups[i].show();
+  }
 
-// Spawns a popup at random intervals (5 to 10 seconds)
-if (millis() > nextAdTime) {
-  spawnAdPopup();
-  nextAdTime = millis() + random(7000, 15000); // Wait 5–10 sec for next
-}
+  // Spawns a popup at random intervals (5 to 10 seconds)
+  if (millis() > nextAdTime) {
+    spawnAdPopup();
+    nextAdTime = millis() + random(7000, 15000); // Wait 5–10 sec for next
+  }
+
+  //mouse visuals
+  push();
+  noStroke()
+  ellipse(mouseX,mouseY, 15, 15);
+  pop();
 
 
 //   overlayBuffer.clear(); // Clear the entire buffer (fully transparent)
@@ -222,6 +227,39 @@ function mousePressed() {
   }
 }
 
+
+class PopupImgs {
+  constructor(img) {
+    this.img = img;
+    this.x = random(width - img.width);
+    this.y = random(height - img.height);
+    this.closeSize = 40; // Size of the 'X' button
+  }
+
+  show() {
+    //draw the ad image
+    image(this.img, this.x, this.y);
+
+    //draw the X button in the top-right corner
+    push();
+    fill(255, 0, 0);
+    noStroke();
+    rect(this.x + this.img.width - this.closeSize, this.y, this.closeSize, this.closeSize);
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(30);
+    text('X', this.x + this.img.width - this.closeSize / 2, this.y + this.closeSize / 2);
+    pop();
+  }
+
+  isClicked(px, py) {
+    // Check if the player clicked inside the close box
+    let bx = this.x + this.img.width - this.closeSize;
+    let by = this.y;
+    return (px >= bx && px <= bx + this.closeSize && py >= by && py <= by + this.closeSize);
+  }
+}
+
 class Boid {
   constructor(x, y) {
     this.position = createVector(x, y);
@@ -234,17 +272,12 @@ class Boid {
 
   flockWithMouse() {
 
-  push();
-  noStroke()
-  ellipse(mouseX,mouseY, 15, 15); //makes the mouse an ellipse
-  pop();
-
   // If the mouse is over a wall, do nothing
   if (isWall(mouseX, mouseY)) return;
 
   let mouse = createVector(mouseX, mouseY);
   let distance = p5.Vector.dist(mouse, this.position); //distance between mouse and boid
-  let mouseInfluenceRadius = 75;
+  let mouseInfluenceRadius = 85;
 
   //if the distance btwn the mouse and boid is smaller than the influence radius, the boid will follow the mouse
   if (distance < mouseInfluenceRadius) {
@@ -313,36 +346,4 @@ show() {
 
   pop();
 }
-}
-
-class PopupImgs {
-  constructor(img) {
-    this.img = img;
-    this.x = random(width - img.width);
-    this.y = random(height - img.height);
-    this.closeSize = 40; // Size of the 'X' button
-  }
-
-  show() {
-    //draw the ad image
-    image(this.img, this.x, this.y);
-
-    //draw the X button in the top-right corner
-    push();
-    fill(255, 0, 0);
-    noStroke();
-    rect(this.x + this.img.width - this.closeSize, this.y, this.closeSize, this.closeSize);
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(30);
-    text('X', this.x + this.img.width - this.closeSize / 2, this.y + this.closeSize / 2);
-    pop();
-  }
-
-  isClicked(px, py) {
-    // Check if the player clicked inside the close box
-    let bx = this.x + this.img.width - this.closeSize;
-    let by = this.y;
-    return (px >= bx && px <= bx + this.closeSize && py >= by && py <= by + this.closeSize);
-  }
 }
