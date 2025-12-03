@@ -93,7 +93,7 @@ function preload() {
 
     //loading all img assets
     bgImg = loadImage("assets/images/bg.png");
-    girlSpriteImg = loadImage("assets/images/girl.png");
+    girlSpriteImg = loadImage("assets/images/girl2.png");
     headOutBtnImg = loadImage("assets/images/headout.png");
     mirrorImg = loadImage("assets/images/mirror.png");
     uibordersImg = loadImage("assets/images/uiborders.png");
@@ -214,7 +214,7 @@ function drawCritiqueSequence() {
   // You can play your animation here:
   // image(doorAnimationFrame, ...)
 
-  // AFTER 3 SECONDS → return to dressup
+  //after 3 seconds → return to dressup
   if (millis() - commentStartTime > 4000) {
     gameState = "dressup";
   }
